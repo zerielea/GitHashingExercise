@@ -1,0 +1,109 @@
+--EXAMPLE 1--
+
+In example 1,the parent process creates a child process using fork().
+Fork() output:
+If I’m in the parent process,pid will be the child’s pid(>0).
+If I’m in the child process,pid = 0.
+If fork() fails,then pid<0.
+The parent and child processes do different things:
+Child process:It prints its own pid and its parent’s pid. Then, it runs the ls -l command using execlp() to show the list of files in the directory. If execlp() doesn’t work, the child process will stop with an error.
+Parent process:It prints its pid and the child’s pid.After that, it waits for the child to finish using wait(),so the child doesn’t turn into a "zombie" process(where the child is finished, but its information is still in the system).
+
+Here is the output of the program when I ran it:
+
+Parent Process: PID = 3379077, Created Child PID = 3379078
+Child Process: PID = 3379078, Parent PID = 3379077
+total 48
+-rwxrwxr-x 1 zerielea zerielea 17048 Dec 28 02:23 example1
+-rw-rw-r-- 1 zerielea zerielea   855 Dec 28 02:23 example1.c
+-rw-rw-r-- 1 zerielea zerielea   347 Dec 21 20:28 example2.c
+-rw-rw-r-- 1 zerielea zerielea   643 Dec 21 20:28 example3.c
+-rw-rw-r-- 1 zerielea zerielea   670 Dec 21 20:28 example4.c
+-rw-rw-r-- 1 zerielea zerielea  1622 Dec 21 20:28 example5.c
+-rw-rw-r-- 1 zerielea zerielea  1595 Dec 21 20:28 lab04.tar.gz
+-rw-rw-r-- 1 zerielea zerielea   416 Dec 21 20:28 Makefile
+Parent Process: Child has terminated.
+
+When the program was executed, the parent process(PID 3379077) created a child process(PID 3379078).The child process printed its own PID (3379078) and the parent’s PID (3379077), then executed the ls -l command using execlp().After the child process finished executing the ls command, the parent process printed the message "Parent Process: Child has terminated," confirming that it waited for the child process to finish before exiting.
+
+
+--EXAMPLE 2--
+
+Example 2 simply prints the pid of the current process and the pid of its parent process.
+
+Here is the output of the program when I ran it: 
+
+Current Process ID (PID): 3379090
+Parent Process ID (PPID): 3378822 
+
+If I use the ps command to list all the processes currently running,I can see that the parent process of example 2 is the shell process that started it:
+
+    PID TTY          TIME CMD
+3382812 pts/5    00:00:00 bash
+3382857 pts/5    00:00:00 ps
+
+
+--EXAMPLE 3--
+
+This program prints the process ID(pid) and then enters an infinite loop,continuously printing a message to indicate that it is running.It uses the signal() function to register a custom handler for the SIGINT signal,triggered when the user presses Ctrl+C.When you press Ctrl+C, the handler catches the signal and terminates the program nicely with a message.
+
+Here is the output of the program when I ran it: 
+
+Process ID: 3382971  
+Press Ctrl+C to trigger SIGINT.  
+Running... Press Ctrl+C to exit.  
+Running... Press Ctrl+C to exit.  
+Running... Press Ctrl+C to exit.  
+^C  
+Caught signal 2 (SIGINT). Exiting gracefully...  
+
+The loop kept it running for 3 times until I pressed Ctrl+C.
+
+
+--EXAMPLE 4--
+
+This program is similar to Example 3, but with a basic difference:it runs indefinitely, printing every 2 seconds that it received a SIGINT signal,but it ignores it and keeps running.The signal handler does not stop the program,so the program never exits on its own.To stop the program, I pressed Ctrl+Z to pause it and then used the kill -9 command with its PID to terminate it manually.
+
+Here is the output when I ran the program:
+
+Process ID: 3383160
+Press Ctrl+C to attempt to send SIGINT.
+Running... Try pressing Ctrl+C.
+^C
+Received SIGINT (signal 2), but ignoring it.
+Running... Try pressing Ctrl+C.
+Running... Try pressing Ctrl+C.
+^C
+Received SIGINT (signal 2), but ignoring it.
+Running... Try pressing Ctrl+C.
+^Z
+[1]+  Stopped                 ./example4
+
+To kill the program, I found its PID using ps:
+
+zerielea@csal-vm:~/OS/Lab04$ ps
+    PID TTY          TIME CMD
+3382812 pts/5    00:00:00 bash
+3383160 pts/5    00:00:00 example4
+3383161 pts/5    00:00:00 ps
+
+Then, I used kill -9 3383160 to force it to terminate:
+
+zerielea@csal-vm:~/OS/Lab04$ kill -9 3383160
+[1]+  Killed                  ./example4
+
+
+--EXAMPLE 5--
+
+In Example 5,the parent process starts first and uses fork() to create the child process.After fork(),the parent identifies itself (because pid > 0) and prints its pid and the pid of the child process.The child process starts(because pid==0),it uses signal() to register a handler function to signal SIGURS1,prints its pid and enters an infinite loop,waiting for the parent process to send SIGURS1 using pause().After the parent waits 3 seconds to give the child time to prepare, it sends the SIGUSR1 signal to the child using kill().The child receives the SIGUSR1 signal, triggering the sigusr1_handler() function.
+The handler prints a message saying the child received the signal.After giving the child time to process SIGUSR1, the parent sends a SIGTERM signal to terminate the child process.The parent uses wait() to ensure the child process has terminated before it exits itself.After fork(), both processes execute their respective paths and run independently but concurrently because of the 3-second delay introduced by the parent process before sending SIGUSR1.
+
+We can see all those steps of the program flow in the output which is:
+
+Parent process ID: 3388115. Child PID: 3388116
+Child process ID: 3388116. Waiting for SIGUSR1...
+Parent sending SIGUSR1 to child.
+Child received SIGUSR1 (signal 10).
+Parent sending SIGTERM to child.
+Child process terminated.
+
